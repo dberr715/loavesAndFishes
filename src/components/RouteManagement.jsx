@@ -11,6 +11,7 @@ function RouteManagement() {
   const [editField, setEditField] = useState("");
   const [editValue, setEditValue] = useState("");
 
+  // Fetch routes data
   useEffect(() => {
     async function fetchRoutes() {
       try {
@@ -23,13 +24,19 @@ function RouteManagement() {
     fetchRoutes();
   }, []);
 
+  // Open the modal with the specified route and field to edit
   const openModal = (route, field) => {
     setCurrentRoute(route);
     setEditField(field);
-    setEditValue(route[field] || "");
+    if (field === "pickup_locations" || field === "dropoff_locations") {
+      setEditValue(route[field].join(", ")); // Convert array to comma-separated string for editing
+    } else {
+      setEditValue(route[field]); // Directly use the value for fields like driver_id
+    }
     setIsModalOpen(true);
   };
 
+  // Close the modal
   const closeModal = () => {
     setIsModalOpen(false);
     setCurrentRoute(null);
@@ -37,26 +44,33 @@ function RouteManagement() {
     setEditValue("");
   };
 
+  // Handle saving changes
   const handleSave = async () => {
     if (currentRoute) {
       try {
         let updatedRoute = { ...currentRoute };
 
+        // Update the specific field
         if (
           editField === "pickup_locations" ||
           editField === "dropoff_locations"
         ) {
           updatedRoute[editField] = editValue
             .split(",")
-            .map((item) => item.trim());
+            .map((item) => item.trim()); // Convert back to array
         } else {
           updatedRoute[editField] = editValue;
         }
 
-        // Update the route on the backend
-        await api.put(`/routes/${currentRoute.route_number}`, updatedRoute);
+        // Send updated data to the backend
+        await api.put(`/routes/${currentRoute.route_number}`, {
+          driver_type: updatedRoute.driver_type,
+          driver_id: updatedRoute.driver_id,
+          pickup_locations: updatedRoute.pickup_locations,
+          dropoff_locations: updatedRoute.dropoff_locations,
+        });
 
-        // Update the route in the state
+        // Update the route in the local state
         setRoutes(
           routes.map((route) =>
             route.route_number === currentRoute.route_number
@@ -71,9 +85,33 @@ function RouteManagement() {
     closeModal();
   };
 
+  // Handle new route submission
+  const handleNewRouteSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const newPickupLocations = newRoute.pickup_locations
+        .split(",")
+        .map((loc) => loc.trim());
+      const newDropoffLocations = newRoute.dropoff_locations
+        .split(",")
+        .map((loc) => loc.trim());
+
+      const response = await api.post("/routes/", {
+        ...newRoute,
+        pickup_locations: newPickupLocations,
+        dropoff_locations: newDropoffLocations,
+      });
+      setRoutes([...routes, response.data]);
+    } catch (error) {
+      console.error("Error creating new route:", error);
+    }
+  };
+
   return (
     <div>
       <h2>Route Management</h2>
+
+      {/* Existing Route Table */}
       <table>
         <thead>
           <tr>
@@ -90,9 +128,7 @@ function RouteManagement() {
               <td>{route.route_number}</td>
               <td>{route.pickup_locations.join(", ")}</td>
               <td>{route.dropoff_locations.join(", ")}</td>
-              <td>
-                {route.driver_type}: {route.driver_id}
-              </td>
+              <td>{route.driver_name}</td> {/* Use driver_name for display */}
               <td>
                 <button onClick={() => openModal(route, "pickup_locations")}>
                   Edit Pickup
@@ -109,6 +145,7 @@ function RouteManagement() {
         </tbody>
       </table>
 
+      {/* Edit Modal */}
       <Modal
         isOpen={isModalOpen}
         onRequestClose={closeModal}
