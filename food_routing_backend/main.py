@@ -3,8 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 import crud, models, schemas
 from database import SessionLocal, engine
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy import func
 
 # Create all the tables in the database
 models.Base.metadata.create_all(bind=engine)
@@ -33,11 +31,7 @@ def get_db():
 # Volunteer Endpoints
 @app.post("/volunteers/", response_model=schemas.Volunteer)
 def create_volunteer(volunteer: schemas.VolunteerCreate, db: Session = Depends(get_db)):
-    try:
-        return crud.create_volunteer(db=db, volunteer=volunteer)
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(status_code=400, detail="Volunteer ID already exists")
+    return crud.create_volunteer(db=db, volunteer=volunteer)
 
 
 @app.get("/volunteers/", response_model=list[schemas.Volunteer])
@@ -63,11 +57,7 @@ def delete_volunteer(volunteer_id: int, db: Session = Depends(get_db)):
 def create_employed_driver(
     driver: schemas.EmployedDriverCreate, db: Session = Depends(get_db)
 ):
-    try:
-        return crud.create_employed_driver(db=db, driver=driver)
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(status_code=400, detail="Driver ID already exists")
+    return crud.create_employed_driver(db=db, driver=driver)
 
 
 @app.get("/drivers/", response_model=list[schemas.EmployedDriver])
@@ -93,64 +83,13 @@ def delete_driver(driver_id: int, db: Session = Depends(get_db)):
 # Route Endpoints
 @app.post("/routes/", response_model=schemas.Route)
 def create_route(route: schemas.RouteCreate, db: Session = Depends(get_db)):
-    # Generate unique route number by finding the max route_number and adding 1
-    max_route_number = db.query(func.max(models.Route.route_number)).scalar()
-    route_number = (max_route_number or 0) + 1
-
-    new_route = models.Route(
-        route_number=route_number,
-        driver_type=route.driver_type,
-        driver_id=route.driver_id,
-        pickup_locations=route.pickup_locations,
-        dropoff_locations=route.dropoff_locations,
-    )
-    try:
-        db.add(new_route)
-        db.commit()
-        db.refresh(new_route)
-        return new_route
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(
-            status_code=400, detail="Route number or foreign key constraint failed"
-        )
+    return crud.create_route(db=db, route=route)
 
 
 @app.get("/routes/", response_model=list[schemas.Route])
 def read_routes(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
     routes = crud.get_routes(db, skip=skip, limit=limit)
-    routes_with_driver_names = []
-
-    for route in routes:
-        driver_name = "Unknown"
-        if route.driver_type == "volunteer":
-            volunteer = (
-                db.query(models.Volunteer)
-                .filter(models.Volunteer.id == route.driver_id)
-                .first()
-            )
-            driver_name = (
-                f"{volunteer.first_name} {volunteer.last_name}"
-                if volunteer
-                else "Unknown Volunteer"
-            )
-        elif route.driver_type == "employed_driver":
-            driver = (
-                db.query(models.EmployedDriver)
-                .filter(models.EmployedDriver.id == route.driver_id)
-                .first()
-            )
-            driver_name = (
-                f"{driver.first_name} {driver.last_name}"
-                if driver
-                else "Unknown Driver"
-            )
-
-        route_dict = route.__dict__.copy()
-        route_dict["driver_name"] = driver_name
-        routes_with_driver_names.append(route_dict)
-
-    return routes_with_driver_names
+    return routes
 
 
 @app.put("/routes/{route_number}", response_model=schemas.Route)
