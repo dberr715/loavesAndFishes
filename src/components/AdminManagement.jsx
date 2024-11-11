@@ -1,10 +1,17 @@
 import React, { useEffect, useState } from "react";
 import api from "../api";
+import Modal from "react-modal";
+
+Modal.setAppElement("#root");
 
 function AdminManagement() {
   const [volunteers, setVolunteers] = useState([]);
   const [drivers, setDrivers] = useState([]);
   const [routes, setRoutes] = useState([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentEditItem, setCurrentEditItem] = useState(null);
+  const [editField, setEditField] = useState("");
+  const [editValue, setEditValue] = useState("");
 
   useEffect(() => {
     async function fetchData() {
@@ -49,6 +56,85 @@ function AdminManagement() {
     }
   };
 
+  const openEditModal = (item, field) => {
+    setCurrentEditItem(item);
+    setEditField(field);
+
+    // Set editValue based on the field being edited
+    if (field === "name") {
+      setEditValue(`${item.first_name} ${item.last_name}`);
+    } else if (field === "route_number") {
+      setEditValue(item[field].toString());
+    }
+    setIsModalOpen(true);
+  };
+
+  const closeEditModal = () => {
+    setIsModalOpen(false);
+    setCurrentEditItem(null);
+    setEditValue("");
+    setEditField("");
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      if (currentEditItem) {
+        const updatedItem = { ...currentEditItem };
+
+        if (editField === "name") {
+          // Editing volunteer or driver name
+          const [firstName, lastName] = editValue.split(" ");
+          updatedItem.first_name = firstName || "";
+          updatedItem.last_name = lastName || "";
+
+          if (currentEditItem.driver_id !== undefined) {
+            // Update Driver
+            await api.put(`/drivers/${currentEditItem.id}`, {
+              first_name: updatedItem.first_name,
+              last_name: updatedItem.last_name,
+            });
+            setDrivers(
+              drivers.map((driver) =>
+                driver.id === updatedItem.id ? updatedItem : driver
+              )
+            );
+          } else {
+            // Update Volunteer
+            await api.put(`/volunteers/${currentEditItem.id}`, {
+              first_name: updatedItem.first_name,
+              last_name: updatedItem.last_name,
+            });
+            setVolunteers(
+              volunteers.map((volunteer) =>
+                volunteer.id === updatedItem.id ? updatedItem : volunteer
+              )
+            );
+          }
+        } else if (editField === "route_number") {
+          // Editing route number
+          updatedItem.route_number = parseInt(editValue, 10);
+          await api.put(`/routes/${currentEditItem.route_number}`, {
+            route_number: updatedItem.route_number,
+            driver_type: updatedItem.driver_type,
+            driver_id: updatedItem.driver_id,
+            pickup_locations: updatedItem.pickup_locations,
+            dropoff_locations: updatedItem.dropoff_locations,
+          });
+          setRoutes(
+            routes.map((route) =>
+              route.route_number === currentEditItem.route_number
+                ? updatedItem
+                : route
+            )
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Error saving edit:", error);
+    }
+    closeEditModal();
+  };
+
   return (
     <div className="container mt-4">
       <h2 className="text-center mb-4">Admin Management</h2>
@@ -65,12 +151,20 @@ function AdminManagement() {
                 className="list-group-item d-flex justify-content-between align-items-center"
               >
                 {volunteer.first_name} {volunteer.last_name}
-                <button
-                  className="btn btn-danger btn-sm"
-                  onClick={() => handleDeleteVolunteer(volunteer.id)}
-                >
-                  Delete
-                </button>
+                <div>
+                  <button
+                    className="btn btn-primary btn-sm me-2"
+                    onClick={() => openEditModal(volunteer, "name")}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="btn btn-danger btn-sm"
+                    onClick={() => handleDeleteVolunteer(volunteer.id)}
+                  >
+                    Delete
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
@@ -89,12 +183,20 @@ function AdminManagement() {
                 className="list-group-item d-flex justify-content-between align-items-center"
               >
                 {driver.first_name} {driver.last_name}
-                <button
-                  className="btn btn-danger btn-sm"
-                  onClick={() => handleDeleteDriver(driver.id)}
-                >
-                  Delete
-                </button>
+                <div>
+                  <button
+                    className="btn btn-primary btn-sm me-2"
+                    onClick={() => openEditModal(driver, "name")}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="btn btn-danger btn-sm"
+                    onClick={() => handleDeleteDriver(driver.id)}
+                  >
+                    Delete
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
@@ -113,17 +215,47 @@ function AdminManagement() {
                 className="list-group-item d-flex justify-content-between align-items-center"
               >
                 Route #{route.route_number}
-                <button
-                  className="btn btn-danger btn-sm"
-                  onClick={() => handleDeleteRoute(route.route_number)}
-                >
-                  Delete
-                </button>
+                <div>
+                  <button
+                    className="btn btn-primary btn-sm me-2"
+                    onClick={() => openEditModal(route, "route_number")}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="btn btn-danger btn-sm"
+                    onClick={() => handleDeleteRoute(route.route_number)}
+                  >
+                    Delete
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
         </div>
       </div>
+
+      {/* Modal for Editing */}
+      <Modal
+        isOpen={isModalOpen}
+        onRequestClose={closeEditModal}
+        contentLabel="Edit Modal"
+      >
+        <h2>Edit {editField === "name" ? "Name" : "Route Number"}</h2>
+        <input
+          type="text"
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          placeholder="Edit value"
+          className="form-control mb-3"
+        />
+        <button className="btn btn-success me-2" onClick={handleSaveEdit}>
+          Save Changes
+        </button>
+        <button className="btn btn-secondary" onClick={closeEditModal}>
+          Cancel
+        </button>
+      </Modal>
     </div>
   );
 }

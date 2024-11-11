@@ -40,6 +40,23 @@ def read_volunteers(skip: int = 0, limit: int = 10, db: Session = Depends(get_db
     return volunteers
 
 
+@app.put("/volunteers/{volunteer_id}", response_model=schemas.Volunteer)
+def update_volunteer(
+    volunteer_id: int, volunteer: schemas.VolunteerCreate, db: Session = Depends(get_db)
+):
+    db_volunteer = (
+        db.query(models.Volunteer).filter(models.Volunteer.id == volunteer_id).first()
+    )
+    if db_volunteer is None:
+        raise HTTPException(status_code=404, detail="Volunteer not found")
+
+    db_volunteer.first_name = volunteer.first_name
+    db_volunteer.last_name = volunteer.last_name
+    db.commit()
+    db.refresh(db_volunteer)
+    return db_volunteer
+
+
 @app.delete("/volunteers/{volunteer_id}", response_model=schemas.Volunteer)
 def delete_volunteer(volunteer_id: int, db: Session = Depends(get_db)):
     db_volunteer = (
@@ -64,6 +81,25 @@ def create_employed_driver(
 def read_drivers(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
     drivers = crud.get_employed_drivers(db, skip=skip, limit=limit)
     return drivers
+
+
+@app.put("/drivers/{driver_id}", response_model=schemas.EmployedDriver)
+def update_driver(
+    driver_id: int, driver: schemas.EmployedDriverCreate, db: Session = Depends(get_db)
+):
+    db_driver = (
+        db.query(models.EmployedDriver)
+        .filter(models.EmployedDriver.id == driver_id)
+        .first()
+    )
+    if db_driver is None:
+        raise HTTPException(status_code=404, detail="Driver not found")
+
+    db_driver.first_name = driver.first_name
+    db_driver.last_name = driver.last_name
+    db.commit()
+    db.refresh(db_driver)
+    return db_driver
 
 
 @app.delete("/drivers/{driver_id}", response_model=schemas.EmployedDriver)
