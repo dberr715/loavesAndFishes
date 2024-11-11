@@ -50,46 +50,79 @@ function AdminManagement() {
   };
 
   return (
-    <div>
-      <h2>Admin Management</h2>
-      <div>
-        <h3>Volunteers</h3>
-        <ul>
-          {volunteers.map((volunteer) => (
-            <li key={volunteer.id}>
-              {volunteer.first_name} {volunteer.last_name}
-              <button onClick={() => handleDeleteVolunteer(volunteer.id)}>
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
+    <div className="container mt-4">
+      <h2 className="text-center mb-4">Admin Management</h2>
+
+      <div className="card mb-4">
+        <div className="card-header">
+          <h3>Volunteers</h3>
+        </div>
+        <div className="card-body">
+          <ul className="list-group">
+            {volunteers.map((volunteer) => (
+              <li
+                key={volunteer.id}
+                className="list-group-item d-flex justify-content-between align-items-center"
+              >
+                {volunteer.first_name} {volunteer.last_name}
+                <button
+                  className="btn btn-danger btn-sm"
+                  onClick={() => handleDeleteVolunteer(volunteer.id)}
+                >
+                  Delete
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
-      <div>
-        <h3>Drivers</h3>
-        <ul>
-          {drivers.map((driver) => (
-            <li key={driver.id}>
-              {driver.first_name} {driver.last_name}
-              <button onClick={() => handleDeleteDriver(driver.id)}>
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
+
+      <div className="card mb-4">
+        <div className="card-header">
+          <h3>Drivers</h3>
+        </div>
+        <div className="card-body">
+          <ul className="list-group">
+            {drivers.map((driver) => (
+              <li
+                key={driver.id}
+                className="list-group-item d-flex justify-content-between align-items-center"
+              >
+                {driver.first_name} {driver.last_name}
+                <button
+                  className="btn btn-danger btn-sm"
+                  onClick={() => handleDeleteDriver(driver.id)}
+                >
+                  Delete
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
-      <div>
-        <h3>Routes</h3>
-        <ul>
-          {routes.map((route) => (
-            <li key={route.route_number}>
-              Route #{route.route_number}
-              <button onClick={() => handleDeleteRoute(route.route_number)}>
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
+
+      <div className="card mb-4">
+        <div className="card-header">
+          <h3>Routes</h3>
+        </div>
+        <div className="card-body">
+          <ul className="list-group">
+            {routes.map((route) => (
+              <li
+                key={route.route_number}
+                className="list-group-item d-flex justify-content-between align-items-center"
+              >
+                Route #{route.route_number}
+                <button
+                  className="btn btn-danger btn-sm"
+                  onClick={() => handleDeleteRoute(route.route_number)}
+                >
+                  Delete
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     </div>
   );

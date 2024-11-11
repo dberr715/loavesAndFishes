@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import api from "../api";
 import Modal from "react-modal";
 
+
 Modal.setAppElement("#root");
 
 function RouteManagement() {
@@ -53,10 +54,8 @@ function RouteManagement() {
           updatedRoute[editField] = editValue;
         }
 
-        // Update the route on the backend
         await api.put(`/routes/${currentRoute.route_number}`, updatedRoute);
 
-        // Update the route in the state
         setRoutes(
           routes.map((route) =>
             route.route_number === currentRoute.route_number
@@ -72,10 +71,10 @@ function RouteManagement() {
   };
 
   return (
-    <div>
-      <h2>Route Management</h2>
-      <table>
-        <thead>
+    <div className="container-fluid mt-4">
+      <h2 className="text-center mb-4">Route Management</h2>
+      <table className="table table-bordered table-hover">
+        <thead className="table-dark">
           <tr>
             <th>Route Number</th>
             <th>Pickup Locations</th>
@@ -94,13 +93,22 @@ function RouteManagement() {
                 {route.driver_type}: {route.driver_id}
               </td>
               <td>
-                <button onClick={() => openModal(route, "pickup_locations")}>
+                <button
+                  className="btn btn-primary btn-sm me-2"
+                  onClick={() => openModal(route, "pickup_locations")}
+                >
                   Edit Pickup
                 </button>
-                <button onClick={() => openModal(route, "dropoff_locations")}>
+                <button
+                  className="btn btn-primary btn-sm me-2"
+                  onClick={() => openModal(route, "dropoff_locations")}
+                >
                   Edit Dropoff
                 </button>
-                <button onClick={() => openModal(route, "driver_id")}>
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={() => openModal(route, "driver_id")}
+                >
                   Edit Driver
                 </button>
               </td>
@@ -122,9 +130,14 @@ function RouteManagement() {
           value={editValue}
           onChange={(e) => setEditValue(e.target.value)}
           placeholder={`Edit ${editField}`}
+          className="form-control mb-3"
         />
-        <button onClick={handleSave}>Save Changes</button>
-        <button onClick={closeModal}>Cancel</button>
+        <button className="btn btn-success me-2" onClick={handleSave}>
+          Save Changes
+        </button>
+        <button className="btn btn-secondary" onClick={closeModal}>
+          Cancel
+        </button>
       </Modal>
     </div>
   );
