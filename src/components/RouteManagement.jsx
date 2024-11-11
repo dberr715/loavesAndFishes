@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import api from "../api";
 import Modal from "react-modal";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 Modal.setAppElement("#root");
 
@@ -16,6 +18,9 @@ function RouteManagement() {
     key: "",
     direction: "ascending",
   });
+  const [dateFilter, setDateFilter] = useState(null);
+  const [routeDates, setRouteDates] = useState({});
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
   useEffect(() => {
     async function fetchRoutes() {
@@ -34,16 +39,42 @@ function RouteManagement() {
   const handleFilterChange = (event) => {
     const value = event.target.value.toLowerCase();
     setFilter(value);
-    const filtered = routes.filter((route) => {
+    filterRoutes(value, dateFilter);
+  };
+
+  // Handle Date Filter Change
+  const handleDateFilterChange = (date) => {
+    setDateFilter(date);
+    filterRoutes(filter, date);
+    setIsDatePickerOpen(false);
+  };
+
+  const handleClearDateFilter = () => {
+    setDateFilter(null);
+    filterRoutes(filter, null);
+  };
+
+  const filterRoutes = (textFilter, dateFilter) => {
+    let filtered = routes.filter((route) => {
       return (
-        route.route_number.toString().includes(value) ||
-        route.pickup_locations.join(", ").toLowerCase().includes(value) ||
-        route.dropoff_locations.join(", ").toLowerCase().includes(value) ||
+        route.route_number.toString().includes(textFilter) ||
+        route.pickup_locations.join(", ").toLowerCase().includes(textFilter) ||
+        route.dropoff_locations.join(", ").toLowerCase().includes(textFilter) ||
         (route.driver_type + ": " + route.driver_id)
           .toLowerCase()
-          .includes(value)
+          .includes(textFilter)
       );
     });
+
+    if (dateFilter) {
+      filtered = filtered.filter((route) => {
+        const routeDate = routeDates[route.route_number];
+        return (
+          routeDate && routeDate.toDateString() === dateFilter.toDateString()
+        );
+      });
+    }
+
     setFilteredRoutes(filtered);
   };
 
@@ -55,13 +86,21 @@ function RouteManagement() {
     }
 
     const sortedRoutes = [...filteredRoutes].sort((a, b) => {
-      if (a[key] < b[key]) {
-        return direction === "ascending" ? -1 : 1;
+      if (key === "date") {
+        const dateA = routeDates[a.route_number];
+        const dateB = routeDates[b.route_number];
+        if (dateA < dateB) return direction === "ascending" ? -1 : 1;
+        if (dateA > dateB) return direction === "ascending" ? 1 : -1;
+        return 0;
+      } else {
+        if (a[key] < b[key]) {
+          return direction === "ascending" ? -1 : 1;
+        }
+        if (a[key] > b[key]) {
+          return direction === "ascending" ? 1 : -1;
+        }
+        return 0;
       }
-      if (a[key] > b[key]) {
-        return direction === "ascending" ? 1 : -1;
-      }
-      return 0;
     });
 
     setSortConfig({ key, direction });
@@ -123,6 +162,10 @@ function RouteManagement() {
     closeModal();
   };
 
+  const handleDateChange = (routeNumber, date) => {
+    setRouteDates({ ...routeDates, [routeNumber]: date });
+  };
+
   return (
     <div className="container mt-4">
       <h2 className="text-center mb-4">Route Management</h2>
@@ -136,6 +179,31 @@ function RouteManagement() {
           value={filter}
           onChange={handleFilterChange}
         />
+      </div>
+
+      {/* Date Filter Button and Picker */}
+      <div className="mb-3">
+        <button
+          className="btn btn-primary me-2"
+          onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}
+        >
+          {isDatePickerOpen ? "Close Date Picker" : "Filter by Date"}
+        </button>
+        {isDatePickerOpen && (
+          <div className="mb-3">
+            <DatePicker
+              selected={dateFilter}
+              onChange={handleDateFilterChange}
+              className="form-control"
+              placeholderText="Select date"
+            />
+          </div>
+        )}
+        {dateFilter && (
+          <button className="btn btn-secondary" onClick={handleClearDateFilter}>
+            Clear Date Filter
+          </button>
+        )}
       </div>
 
       {/* Route Table */}
@@ -174,6 +242,14 @@ function RouteManagement() {
               {sortConfig.key === "driver_id" &&
                 (sortConfig.direction === "ascending" ? "↑" : "↓")}
             </th>
+            <th
+              onClick={() => handleSort("date")}
+              style={{ cursor: "pointer" }}
+            >
+              Date{" "}
+              {sortConfig.key === "date" &&
+                (sortConfig.direction === "ascending" ? "↑" : "↓")}
+            </th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -185,6 +261,16 @@ function RouteManagement() {
               <td>{route.dropoff_locations.join(", ")}</td>
               <td>
                 {route.driver_type}: {route.driver_id}
+              </td>
+              <td>
+                <DatePicker
+                  selected={routeDates[route.route_number] || null}
+                  onChange={(date) =>
+                    handleDateChange(route.route_number, date)
+                  }
+                  className="form-control"
+                  placeholderText="Select date"
+                />
               </td>
               <td>
                 <button
