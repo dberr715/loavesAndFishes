@@ -10,6 +10,7 @@ function RouteManagement() {
   const [routes, setRoutes] = useState([]);
   const [filteredRoutes, setFilteredRoutes] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [currentRoute, setCurrentRoute] = useState(null);
   const [editField, setEditField] = useState("");
   const [editValue, setEditValue] = useState("");
@@ -21,6 +22,15 @@ function RouteManagement() {
   const [dateFilter, setDateFilter] = useState(null);
   const [routeDates, setRouteDates] = useState({});
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+
+  // New state for adding a new route
+  const [newRoute, setNewRoute] = useState({
+    route_number: "",
+    pickup_locations: "",
+    dropoff_locations: "",
+    driver_type: "",
+    driver_id: "",
+  });
 
   useEffect(() => {
     async function fetchRoutes() {
@@ -121,6 +131,21 @@ function RouteManagement() {
     setEditValue("");
   };
 
+  const openAddModal = () => {
+    setIsAddModalOpen(true);
+  };
+
+  const closeAddModal = () => {
+    setIsAddModalOpen(false);
+    setNewRoute({
+      route_number: "",
+      pickup_locations: "",
+      dropoff_locations: "",
+      driver_type: "",
+      driver_id: "",
+    });
+  };
+
   const handleSave = async () => {
     if (currentRoute) {
       try {
@@ -162,8 +187,44 @@ function RouteManagement() {
     closeModal();
   };
 
-  const handleDateChange = (routeNumber, date) => {
-    setRouteDates({ ...routeDates, [routeNumber]: date });
+  const handleAddRoute = async () => {
+    try {
+      // Prepare new route data (backend will be handled later)
+      const newRouteData = {
+        ...newRoute,
+        pickup_locations: newRoute.pickup_locations
+          .split(",")
+          .map((loc) => loc.trim()),
+        dropoff_locations: newRoute.dropoff_locations
+          .split(",")
+          .map((loc) => loc.trim()),
+      };
+
+      // You would call an API to add the new route
+      // await api.post("/routes/", newRouteData);
+
+      // Update the state locally for now
+      setRoutes([...routes, newRouteData]);
+      setFilteredRoutes([...filteredRoutes, newRouteData]);
+      closeAddModal();
+    } catch (error) {
+      console.error("Error adding route:", error);
+    }
+  };
+
+  const handleDeleteRoute = async (routeNumber) => {
+    try {
+      // You would call an API to delete the route (backend will be handled later)
+      // await api.delete(`/routes/${routeNumber}`);
+
+      // Remove the route from the state locally for now
+      setRoutes(routes.filter((route) => route.route_number !== routeNumber));
+      setFilteredRoutes(
+        filteredRoutes.filter((route) => route.route_number !== routeNumber)
+      );
+    } catch (error) {
+      console.error("Error deleting route:", error);
+    }
   };
 
   return (
@@ -181,29 +242,11 @@ function RouteManagement() {
         />
       </div>
 
-      {/* Date Filter Button and Picker */}
-      <div className="mb-3">
-        <button
-          className="btn btn-primary me-2"
-          onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}
-        >
-          {isDatePickerOpen ? "Close Date Picker" : "Filter by Date"}
+      {/* Add Route Button */}
+      <div className="mb-4 text-end">
+        <button className="btn btn-success" onClick={openAddModal}>
+          Add Route
         </button>
-        {isDatePickerOpen && (
-          <div className="mb-3">
-            <DatePicker
-              selected={dateFilter}
-              onChange={handleDateFilterChange}
-              className="form-control"
-              placeholderText="Select date"
-            />
-          </div>
-        )}
-        {dateFilter && (
-          <button className="btn btn-secondary" onClick={handleClearDateFilter}>
-            Clear Date Filter
-          </button>
-        )}
       </div>
 
       {/* Route Table */}
@@ -286,10 +329,16 @@ function RouteManagement() {
                   Edit Dropoff
                 </button>
                 <button
-                  className="btn btn-primary btn-sm"
+                  className="btn btn-primary btn-sm me-2"
                   onClick={() => openModal(route, "driver_id")}
                 >
                   Edit Driver
+                </button>
+                <button
+                  className="btn btn-danger btn-sm"
+                  onClick={() => handleDeleteRoute(route.route_number)}
+                >
+                  Delete Route
                 </button>
               </td>
             </tr>
@@ -317,6 +366,68 @@ function RouteManagement() {
           Save Changes
         </button>
         <button className="btn btn-secondary" onClick={closeModal}>
+          Cancel
+        </button>
+      </Modal>
+
+      {/* Modal for Adding New Route */}
+      <Modal
+        isOpen={isAddModalOpen}
+        onRequestClose={closeAddModal}
+        contentLabel="Add Route Modal"
+      >
+        <h2>Add New Route</h2>
+        <div className="mb-3">
+          <input
+            type="text"
+            value={newRoute.route_number}
+            onChange={(e) =>
+              setNewRoute({ ...newRoute, route_number: e.target.value })
+            }
+            placeholder="Route Number"
+            className="form-control mb-3"
+          />
+          <input
+            type="text"
+            value={newRoute.pickup_locations}
+            onChange={(e) =>
+              setNewRoute({ ...newRoute, pickup_locations: e.target.value })
+            }
+            placeholder="Pickup Locations (comma-separated)"
+            className="form-control mb-3"
+          />
+          <input
+            type="text"
+            value={newRoute.dropoff_locations}
+            onChange={(e) =>
+              setNewRoute({ ...newRoute, dropoff_locations: e.target.value })
+            }
+            placeholder="Dropoff Locations (comma-separated)"
+            className="form-control mb-3"
+          />
+          <input
+            type="text"
+            value={newRoute.driver_type}
+            onChange={(e) =>
+              setNewRoute({ ...newRoute, driver_type: e.target.value })
+            }
+            placeholder="Driver Type"
+            className="form-control mb-3"
+          />
+          <input
+            type="text"
+            value={newRoute.driver_id}
+            onChange={(e) =>
+              setNewRoute({ ...newRoute, driver_id: e.target.value })
+            }
+            placeholder="Driver ID"
+            className="form-control mb-3"
+          />
+        </div>
+        <button className="btn btn-success me-2" onClick={handleAddRoute}>
+          Add Route
+        </button>
+        <button className="btn btn-secondary" onClick={closeAddModal}>
           Cancel
         </button>
       </Modal>

@@ -9,9 +9,11 @@ function AdminManagement() {
   const [drivers, setDrivers] = useState([]);
   const [routes, setRoutes] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [currentEditItem, setCurrentEditItem] = useState(null);
   const [editField, setEditField] = useState("");
   const [editValue, setEditValue] = useState("");
+  const [addItemType, setAddItemType] = useState("");
 
   useEffect(() => {
     async function fetchData() {
@@ -29,6 +31,7 @@ function AdminManagement() {
     fetchData();
   }, []);
 
+  // Handlers for Deleting Items
   const handleDeleteVolunteer = async (id) => {
     try {
       await api.delete(`/volunteers/${id}`);
@@ -56,16 +59,13 @@ function AdminManagement() {
     }
   };
 
+  // Handlers for Editing Items
   const openEditModal = (item, field) => {
     setCurrentEditItem(item);
     setEditField(field);
-
-    // Set editValue based on the field being edited
-    if (field === "name") {
-      setEditValue(`${item.first_name} ${item.last_name}`);
-    } else if (field === "route_number") {
-      setEditValue(item[field].toString());
-    }
+    setEditValue(
+      field === "name" ? `${item.first_name} ${item.last_name}` : item[field]
+    );
     setIsModalOpen(true);
   };
 
@@ -113,13 +113,7 @@ function AdminManagement() {
         } else if (editField === "route_number") {
           // Editing route number
           updatedItem.route_number = parseInt(editValue, 10);
-          await api.put(`/routes/${currentEditItem.route_number}`, {
-            route_number: updatedItem.route_number,
-            driver_type: updatedItem.driver_type,
-            driver_id: updatedItem.driver_id,
-            pickup_locations: updatedItem.pickup_locations,
-            dropoff_locations: updatedItem.dropoff_locations,
-          });
+          await api.put(`/routes/${currentEditItem.route_number}`, updatedItem);
           setRoutes(
             routes.map((route) =>
               route.route_number === currentEditItem.route_number
@@ -135,13 +129,66 @@ function AdminManagement() {
     closeEditModal();
   };
 
+  // Handlers for Adding Items
+  const openAddModal = (itemType) => {
+    setAddItemType(itemType);
+    setIsAddModalOpen(true);
+  };
+
+  const closeAddModal = () => {
+    setIsAddModalOpen(false);
+    setAddItemType("");
+  };
+
+  const handleAddItem = async () => {
+    try {
+      if (addItemType === "volunteer") {
+        const newVolunteer = {
+          first_name: editValue.split(" ")[0],
+          last_name: editValue.split(" ")[1] || "",
+        };
+        // Save to backend
+        const response = await api.post("/volunteers/", newVolunteer);
+        setVolunteers([...volunteers, response.data]);
+      } else if (addItemType === "driver") {
+        const newDriver = {
+          first_name: editValue.split(" ")[0],
+          last_name: editValue.split(" ")[1] || "",
+        };
+        // Save to backend
+        const response = await api.post("/drivers/", newDriver);
+        setDrivers([...drivers, response.data]);
+      } else if (addItemType === "route") {
+        const newRoute = {
+          route_number: parseInt(editValue, 10),
+          driver_type: "Unknown",
+          driver_id: 0,
+          pickup_locations: ["Unknown"],
+          dropoff_locations: ["Unknown"],
+        };
+        // Save to backend
+        const response = await api.post("/routes/", newRoute);
+        setRoutes([...routes, response.data]);
+      }
+    } catch (error) {
+      console.error("Error adding item:", error);
+    }
+    closeAddModal();
+  };
+
   return (
     <div className="container mt-4">
       <h2 className="text-center mb-4">Admin Management</h2>
 
       <div className="card mb-4">
-        <div className="card-header">
+        <div className="card-header d-flex justify-content-between align-items-center">
           <h3>Volunteers</h3>
+          <button
+            className="btn btn-success btn-sm"
+            onClick={() => openAddModal("volunteer")}
+          >
+            Add Volunteer
+          </button>
         </div>
         <div className="card-body">
           <ul className="list-group">
@@ -172,8 +219,14 @@ function AdminManagement() {
       </div>
 
       <div className="card mb-4">
-        <div className="card-header">
+        <div className="card-header d-flex justify-content-between align-items-center">
           <h3>Drivers</h3>
+          <button
+            className="btn btn-success btn-sm"
+            onClick={() => openAddModal("driver")}
+          >
+            Add Driver
+          </button>
         </div>
         <div className="card-body">
           <ul className="list-group">
@@ -204,8 +257,14 @@ function AdminManagement() {
       </div>
 
       <div className="card mb-4">
-        <div className="card-header">
+        <div className="card-header d-flex justify-content-between align-items-center">
           <h3>Routes</h3>
+          <button
+            className="btn btn-success btn-sm"
+            onClick={() => openAddModal("route")}
+          >
+            Add Route
+          </button>
         </div>
         <div className="card-body">
           <ul className="list-group">
@@ -253,6 +312,37 @@ function AdminManagement() {
           Save Changes
         </button>
         <button className="btn btn-secondary" onClick={closeEditModal}>
+          Cancel
+        </button>
+      </Modal>
+
+      {/* Modal for Adding Items */}
+      <Modal
+        isOpen={isAddModalOpen}
+        onRequestClose={closeAddModal}
+        contentLabel="Add Modal"
+      >
+        <h2>
+          Add{" "}
+          {addItemType === "volunteer"
+            ? "Volunteer"
+            : addItemType === "driver"
+            ? "Driver"
+            : "Route"}
+        </h2>
+        <input
+          type="text"
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          placeholder={`Enter ${
+            addItemType === "route" ? "Route Number" : "Full Name"
+          }`}
+          className="form-control mb-3"
+        />
+        <button className="btn btn-success me-2" onClick={handleAddItem}>
+          Add {addItemType}
+        </button>
+        <button className="btn btn-secondary" onClick={closeAddModal}>
           Cancel
         </button>
       </Modal>
