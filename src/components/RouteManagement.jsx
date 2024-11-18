@@ -21,9 +21,33 @@ function RouteManagement() {
         const routeResponse = await api.get("/routes/");
         const volunteerResponse = await api.get("/volunteers/");
         const driverResponse = await api.get("/drivers/");
-        setRoutes(routeResponse.data);
+
+        // Store volunteers and drivers in state
         setVolunteers(volunteerResponse.data);
         setDrivers(driverResponse.data);
+
+        // Add driver names to routes
+        const updatedRoutes = routeResponse.data.map((route) => {
+          let driverName = "";
+          if (route.driver_type === "volunteer") {
+            const driver = volunteerResponse.data.find(
+              (volunteer) => volunteer.id === route.driver_id
+            );
+            driverName = driver
+              ? `${driver.first_name} ${driver.last_name}`
+              : "";
+          } else {
+            const driver = driverResponse.data.find(
+              (driver) => driver.id === route.driver_id
+            );
+            driverName = driver
+              ? `${driver.first_name} ${driver.last_name}`
+              : "";
+          }
+          return { ...route, driver_name: driverName };
+        });
+
+        setRoutes(updatedRoutes);
       } catch (error) {
         console.error("Error fetching data:", error);
       }
@@ -95,13 +119,34 @@ function RouteManagement() {
 
       if (response.status === 200) {
         console.log("Edit saved successfully:", response.data);
+
+        // Determine driver_name based on driver_type and driver_id
+        let driverName = "";
+        if (editRouteData.driver_type === "volunteer") {
+          const driver = volunteers.find(
+            (volunteer) => volunteer.id === editRouteData.driver_id
+          );
+          driverName = driver ? `${driver.first_name} ${driver.last_name}` : "";
+        } else {
+          const driver = drivers.find(
+            (driver) => driver.id === editRouteData.driver_id
+          );
+          driverName = driver ? `${driver.first_name} ${driver.last_name}` : "";
+        }
+
+        const updatedRouteWithDriverName = {
+          ...response.data,
+          driver_name: driverName,
+        };
+
         setRoutes(
           routes.map((route) =>
             route.route_number === editRouteData.route_number
-              ? response.data
+              ? updatedRouteWithDriverName
               : route
           )
         );
+
         setEditRouteData({});
         setIsModalOpen(false);
       } else {
