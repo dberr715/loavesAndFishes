@@ -14,6 +14,7 @@ function AdminManagement() {
   const [editField, setEditField] = useState("");
   const [editValue, setEditValue] = useState("");
   const [addItemType, setAddItemType] = useState("");
+  const [addItemData, setAddItemData] = useState({});
 
   useEffect(() => {
     async function fetchData() {
@@ -132,6 +133,7 @@ function AdminManagement() {
   // Handlers for Adding Items
   const openAddModal = (itemType) => {
     setAddItemType(itemType);
+    setAddItemData({});
     setIsAddModalOpen(true);
   };
 
@@ -140,33 +142,34 @@ function AdminManagement() {
     setAddItemType("");
   };
 
+  const handleAddItemChange = (e) => {
+    const { name, value } = e.target;
+    setAddItemData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
+  };
+
   const handleAddItem = async () => {
     try {
       if (addItemType === "volunteer") {
-        const newVolunteer = {
-          first_name: editValue.split(" ")[0],
-          last_name: editValue.split(" ")[1] || "",
-        };
-        // Save to backend
+        const newVolunteer = { ...addItemData };
         const response = await api.post("/volunteers/", newVolunteer);
         setVolunteers([...volunteers, response.data]);
       } else if (addItemType === "driver") {
-        const newDriver = {
-          first_name: editValue.split(" ")[0],
-          last_name: editValue.split(" ")[1] || "",
-        };
-        // Save to backend
+        const newDriver = { ...addItemData };
         const response = await api.post("/drivers/", newDriver);
         setDrivers([...drivers, response.data]);
       } else if (addItemType === "route") {
         const newRoute = {
-          route_number: parseInt(editValue, 10),
-          driver_type: "Unknown",
-          driver_id: 0,
-          pickup_locations: ["Unknown"],
-          dropoff_locations: ["Unknown"],
+          ...addItemData,
+          pickup_locations: addItemData.pickup_locations
+            .split(",")
+            .map((loc) => loc.trim()),
+          dropoff_locations: addItemData.dropoff_locations
+            .split(",")
+            .map((loc) => loc.trim()),
         };
-        // Save to backend
         const response = await api.post("/routes/", newRoute);
         setRoutes([...routes, response.data]);
       }
@@ -330,15 +333,95 @@ function AdminManagement() {
             ? "Driver"
             : "Route"}
         </h2>
-        <input
-          type="text"
-          value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
-          placeholder={`Enter ${
-            addItemType === "route" ? "Route Number" : "Full Name"
-          }`}
-          className="form-control mb-3"
-        />
+        <div>
+          {addItemType === "volunteer" || addItemType === "driver" ? (
+            <>
+              <input
+                type="text"
+                name="first_name"
+                value={addItemData.first_name || ""}
+                onChange={handleAddItemChange}
+                placeholder="First Name"
+                className="form-control mb-3"
+              />
+              <input
+                type="text"
+                name="last_name"
+                value={addItemData.last_name || ""}
+                onChange={handleAddItemChange}
+                placeholder="Last Name"
+                className="form-control mb-3"
+              />
+              <input
+                type="text"
+                name="address"
+                value={addItemData.address || ""}
+                onChange={handleAddItemChange}
+                placeholder="Address"
+                className="form-control mb-3"
+              />
+              <input
+                type="text"
+                name="phone_number"
+                value={addItemData.phone_number || ""}
+                onChange={handleAddItemChange}
+                placeholder="Phone Number"
+                className="form-control mb-3"
+              />
+              <input
+                type="text"
+                name="notes"
+                value={addItemData.notes || ""}
+                onChange={handleAddItemChange}
+                placeholder="Notes"
+                className="form-control mb-3"
+              />
+            </>
+          ) : addItemType === "route" ? (
+            <>
+              <input
+                type="text"
+                name="route_number"
+                value={addItemData.route_number || ""}
+                onChange={handleAddItemChange}
+                placeholder="Route Number"
+                className="form-control mb-3"
+              />
+              <input
+                type="text"
+                name="driver_type"
+                value={addItemData.driver_type || ""}
+                onChange={handleAddItemChange}
+                placeholder="Driver Type"
+                className="form-control mb-3"
+              />
+              <input
+                type="text"
+                name="driver_id"
+                value={addItemData.driver_id || ""}
+                onChange={handleAddItemChange}
+                placeholder="Driver ID"
+                className="form-control mb-3"
+              />
+              <input
+                type="text"
+                name="pickup_locations"
+                value={addItemData.pickup_locations || ""}
+                onChange={handleAddItemChange}
+                placeholder="Pickup Locations (comma-separated)"
+                className="form-control mb-3"
+              />
+              <input
+                type="text"
+                name="dropoff_locations"
+                value={addItemData.dropoff_locations || ""}
+                onChange={handleAddItemChange}
+                placeholder="Dropoff Locations (comma-separated)"
+                className="form-control mb-3"
+              />
+            </>
+          ) : null}
+        </div>
         <button className="btn btn-success me-2" onClick={handleAddItem}>
           Add {addItemType}
         </button>
