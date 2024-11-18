@@ -49,29 +49,67 @@ function RouteManagement() {
     }));
   };
 
+  const handleDriverTypeChangeEdit = (selectedOption) => {
+    setEditRouteData((prevData) => ({
+      ...prevData,
+      driver_type: selectedOption.value,
+    }));
+
+    // Set driver options based on selected driver type
+    const options =
+      selectedOption.value === "volunteer"
+        ? volunteers.map((volunteer) => ({
+            value: volunteer.id,
+            label: `${volunteer.first_name} ${volunteer.last_name}`,
+          }))
+        : drivers.map((driver) => ({
+            value: driver.id,
+            label: `${driver.first_name} ${driver.last_name}`,
+          }));
+    setDriverOptions(options);
+  };
+
+  const handleDriverChangeEdit = (selectedOption) => {
+    setEditRouteData((prevData) => ({
+      ...prevData,
+      driver_id: selectedOption.value,
+    }));
+  };
+
   const handleSaveEdit = async () => {
     try {
       const updatedRoute = {
         ...editRouteData,
-        pickup_locations: editRouteData.pickup_locations
-          .split(",")
-          .map((loc) => loc.trim()),
-        dropoff_locations: editRouteData.dropoff_locations
-          .split(",")
-          .map((loc) => loc.trim()),
+        pickup_locations: Array.isArray(editRouteData.pickup_locations)
+          ? editRouteData.pickup_locations
+          : editRouteData.pickup_locations.split(",").map((loc) => loc.trim()),
+        dropoff_locations: Array.isArray(editRouteData.dropoff_locations)
+          ? editRouteData.dropoff_locations
+          : editRouteData.dropoff_locations.split(",").map((loc) => loc.trim()),
       };
-      await api.put(`/routes/${editRouteData.route_number}`, updatedRoute);
-      setRoutes(
-        routes.map((route) =>
-          route.route_number === editRouteData.route_number
-            ? updatedRoute
-            : route
-        )
+
+      const response = await api.put(
+        `/routes/${editRouteData.route_number}`,
+        updatedRoute
       );
+
+      if (response.status === 200) {
+        console.log("Edit saved successfully:", response.data);
+        setRoutes(
+          routes.map((route) =>
+            route.route_number === editRouteData.route_number
+              ? response.data
+              : route
+          )
+        );
+        setEditRouteData({});
+        setIsModalOpen(false);
+      } else {
+        console.error("Failed to save edit:", response);
+      }
     } catch (error) {
       console.error("Error saving route:", error);
     }
-    closeEditModal();
   };
 
   const openAddModal = () => {
@@ -203,6 +241,28 @@ function RouteManagement() {
           onChange={handleEditRouteChange}
           placeholder="Dropoff Locations (comma-separated)"
           className="form-control mb-3"
+        />
+        <Select
+          options={[
+            { value: "volunteer", label: "Volunteer" },
+            { value: "employed_driver", label: "Employed Driver" },
+          ]}
+          value={{
+            value: editRouteData.driver_type,
+            label: editRouteData.driver_type,
+          }}
+          onChange={handleDriverTypeChangeEdit}
+          placeholder="Select Driver Type"
+          className="mb-3"
+        />
+        <Select
+          options={driverOptions}
+          value={driverOptions.find(
+            (option) => option.value === editRouteData.driver_id
+          )}
+          onChange={handleDriverChangeEdit}
+          placeholder="Select Driver"
+          className="mb-3"
         />
         <button className="btn btn-success me-2" onClick={handleSaveEdit}>
           Save Changes
