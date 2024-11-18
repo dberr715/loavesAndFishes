@@ -11,9 +11,8 @@ function AdminManagement() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [currentEditItem, setCurrentEditItem] = useState(null);
-  const [editField, setEditField] = useState("");
-  const [editValue, setEditValue] = useState("");
   const [addItemType, setAddItemType] = useState("");
+  const [editItemData, setEditItemData] = useState({});
   const [addItemData, setAddItemData] = useState({});
 
   useEffect(() => {
@@ -61,64 +60,64 @@ function AdminManagement() {
   };
 
   // Handlers for Editing Items
-  const openEditModal = (item, field) => {
-    setCurrentEditItem(item);
-    setEditField(field);
-    setEditValue(
-      field === "name" ? `${item.first_name} ${item.last_name}` : item[field]
-    );
+  const openEditModal = (item, type) => {
+    setCurrentEditItem({ ...item, type });
+    setEditItemData({ ...item });
     setIsModalOpen(true);
   };
 
   const closeEditModal = () => {
     setIsModalOpen(false);
     setCurrentEditItem(null);
-    setEditValue("");
-    setEditField("");
+    setEditItemData({});
+  };
+
+  const handleEditItemChange = (e) => {
+    const { name, value } = e.target;
+    setEditItemData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
   };
 
   const handleSaveEdit = async () => {
     try {
       if (currentEditItem) {
-        const updatedItem = { ...currentEditItem };
+        if (currentEditItem.type === "volunteer") {
+          await api.put(`/volunteers/${editItemData.id}`, editItemData);
+          setVolunteers(
+            volunteers.map((volunteer) =>
+              volunteer.id === editItemData.id ? editItemData : volunteer
+            )
+          );
+        } else if (currentEditItem.type === "driver") {
+          await api.put(`/drivers/${editItemData.id}`, editItemData);
+          setDrivers(
+            drivers.map((driver) =>
+              driver.id === editItemData.id ? editItemData : driver
+            )
+          );
+        } else if (currentEditItem.type === "route") {
+          const updatedRoute = {
+            ...editItemData,
+            pickup_locations: editItemData.pickup_locations
+              .split(",")
+              .map((loc) => loc.trim()),
+            dropoff_locations: editItemData.dropoff_locations
+              .split(",")
+              .map((loc) => loc.trim()),
+          };
+          // We do not allow editing the route_number
+          delete updatedRoute.route_number;
 
-        if (editField === "name") {
-          // Editing volunteer or driver name
-          const [firstName, lastName] = editValue.split(" ");
-          updatedItem.first_name = firstName || "";
-          updatedItem.last_name = lastName || "";
-
-          if (currentEditItem.driver_id !== undefined) {
-            // Update Driver
-            await api.put(`/drivers/${currentEditItem.id}`, {
-              first_name: updatedItem.first_name,
-              last_name: updatedItem.last_name,
-            });
-            setDrivers(
-              drivers.map((driver) =>
-                driver.id === updatedItem.id ? updatedItem : driver
-              )
-            );
-          } else {
-            // Update Volunteer
-            await api.put(`/volunteers/${currentEditItem.id}`, {
-              first_name: updatedItem.first_name,
-              last_name: updatedItem.last_name,
-            });
-            setVolunteers(
-              volunteers.map((volunteer) =>
-                volunteer.id === updatedItem.id ? updatedItem : volunteer
-              )
-            );
-          }
-        } else if (editField === "route_number") {
-          // Editing route number
-          updatedItem.route_number = parseInt(editValue, 10);
-          await api.put(`/routes/${currentEditItem.route_number}`, updatedItem);
+          await api.put(
+            `/routes/${currentEditItem.route_number}`,
+            updatedRoute
+          );
           setRoutes(
             routes.map((route) =>
               route.route_number === currentEditItem.route_number
-                ? updatedItem
+                ? { ...route, ...updatedRoute }
                 : route
             )
           );
@@ -183,6 +182,7 @@ function AdminManagement() {
     <div className="container mt-4">
       <h2 className="text-center mb-4">Admin Management</h2>
 
+      {/* Volunteers Section */}
       <div className="card mb-4">
         <div className="card-header d-flex justify-content-between align-items-center">
           <h3>Volunteers</h3>
@@ -204,7 +204,7 @@ function AdminManagement() {
                 <div>
                   <button
                     className="btn btn-primary btn-sm me-2"
-                    onClick={() => openEditModal(volunteer, "name")}
+                    onClick={() => openEditModal(volunteer, "volunteer")}
                   >
                     Edit
                   </button>
@@ -221,6 +221,7 @@ function AdminManagement() {
         </div>
       </div>
 
+      {/* Drivers Section */}
       <div className="card mb-4">
         <div className="card-header d-flex justify-content-between align-items-center">
           <h3>Drivers</h3>
@@ -242,7 +243,7 @@ function AdminManagement() {
                 <div>
                   <button
                     className="btn btn-primary btn-sm me-2"
-                    onClick={() => openEditModal(driver, "name")}
+                    onClick={() => openEditModal(driver, "driver")}
                   >
                     Edit
                   </button>
@@ -259,6 +260,7 @@ function AdminManagement() {
         </div>
       </div>
 
+      {/* Routes Section */}
       <div className="card mb-4">
         <div className="card-header d-flex justify-content-between align-items-center">
           <h3>Routes</h3>
@@ -280,7 +282,7 @@ function AdminManagement() {
                 <div>
                   <button
                     className="btn btn-primary btn-sm me-2"
-                    onClick={() => openEditModal(route, "route_number")}
+                    onClick={() => openEditModal(route, "route")}
                   >
                     Edit
                   </button>
@@ -297,20 +299,93 @@ function AdminManagement() {
         </div>
       </div>
 
-      {/* Modal for Editing */}
+      {/* Modal for Editing Items */}
       <Modal
         isOpen={isModalOpen}
         onRequestClose={closeEditModal}
         contentLabel="Edit Modal"
       >
-        <h2>Edit {editField === "name" ? "Name" : "Route Number"}</h2>
-        <input
-          type="text"
-          value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
-          placeholder="Edit value"
-          className="form-control mb-3"
-        />
+        <h2>Edit {currentEditItem?.type}</h2>
+        {currentEditItem?.type === "volunteer" ||
+        currentEditItem?.type === "driver" ? (
+          <>
+            <input
+              type="text"
+              name="first_name"
+              value={editItemData.first_name || ""}
+              onChange={handleEditItemChange}
+              placeholder="First Name"
+              className="form-control mb-3"
+            />
+            <input
+              type="text"
+              name="last_name"
+              value={editItemData.last_name || ""}
+              onChange={handleEditItemChange}
+              placeholder="Last Name"
+              className="form-control mb-3"
+            />
+            <input
+              type="text"
+              name="address"
+              value={editItemData.address || ""}
+              onChange={handleEditItemChange}
+              placeholder="Address"
+              className="form-control mb-3"
+            />
+            <input
+              type="text"
+              name="phone_number"
+              value={editItemData.phone_number || ""}
+              onChange={handleEditItemChange}
+              placeholder="Phone Number"
+              className="form-control mb-3"
+            />
+            <input
+              type="text"
+              name="notes"
+              value={editItemData.notes || ""}
+              onChange={handleEditItemChange}
+              placeholder="Notes"
+              className="form-control mb-3"
+            />
+          </>
+        ) : currentEditItem?.type === "route" ? (
+          <>
+            <input
+              type="text"
+              name="driver_type"
+              value={editItemData.driver_type || ""}
+              onChange={handleEditItemChange}
+              placeholder="Driver Type"
+              className="form-control mb-3"
+            />
+            <input
+              type="text"
+              name="driver_id"
+              value={editItemData.driver_id || ""}
+              onChange={handleEditItemChange}
+              placeholder="Driver ID"
+              className="form-control mb-3"
+            />
+            <input
+              type="text"
+              name="pickup_locations"
+              value={editItemData.pickup_locations || ""}
+              onChange={handleEditItemChange}
+              placeholder="Pickup Locations (comma-separated)"
+              className="form-control mb-3"
+            />
+            <input
+              type="text"
+              name="dropoff_locations"
+              value={editItemData.dropoff_locations || ""}
+              onChange={handleEditItemChange}
+              placeholder="Dropoff Locations (comma-separated)"
+              className="form-control mb-3"
+            />
+          </>
+        ) : null}
         <button className="btn btn-success me-2" onClick={handleSaveEdit}>
           Save Changes
         </button>
@@ -325,103 +400,86 @@ function AdminManagement() {
         onRequestClose={closeAddModal}
         contentLabel="Add Modal"
       >
-        <h2>
-          Add{" "}
-          {addItemType === "volunteer"
-            ? "Volunteer"
-            : addItemType === "driver"
-            ? "Driver"
-            : "Route"}
-        </h2>
-        <div>
-          {addItemType === "volunteer" || addItemType === "driver" ? (
-            <>
-              <input
-                type="text"
-                name="first_name"
-                value={addItemData.first_name || ""}
-                onChange={handleAddItemChange}
-                placeholder="First Name"
-                className="form-control mb-3"
-              />
-              <input
-                type="text"
-                name="last_name"
-                value={addItemData.last_name || ""}
-                onChange={handleAddItemChange}
-                placeholder="Last Name"
-                className="form-control mb-3"
-              />
-              <input
-                type="text"
-                name="address"
-                value={addItemData.address || ""}
-                onChange={handleAddItemChange}
-                placeholder="Address"
-                className="form-control mb-3"
-              />
-              <input
-                type="text"
-                name="phone_number"
-                value={addItemData.phone_number || ""}
-                onChange={handleAddItemChange}
-                placeholder="Phone Number"
-                className="form-control mb-3"
-              />
-              <input
-                type="text"
-                name="notes"
-                value={addItemData.notes || ""}
-                onChange={handleAddItemChange}
-                placeholder="Notes"
-                className="form-control mb-3"
-              />
-            </>
-          ) : addItemType === "route" ? (
-            <>
-              <input
-                type="text"
-                name="route_number"
-                value={addItemData.route_number || ""}
-                onChange={handleAddItemChange}
-                placeholder="Route Number"
-                className="form-control mb-3"
-              />
-              <input
-                type="text"
-                name="driver_type"
-                value={addItemData.driver_type || ""}
-                onChange={handleAddItemChange}
-                placeholder="Driver Type"
-                className="form-control mb-3"
-              />
-              <input
-                type="text"
-                name="driver_id"
-                value={addItemData.driver_id || ""}
-                onChange={handleAddItemChange}
-                placeholder="Driver ID"
-                className="form-control mb-3"
-              />
-              <input
-                type="text"
-                name="pickup_locations"
-                value={addItemData.pickup_locations || ""}
-                onChange={handleAddItemChange}
-                placeholder="Pickup Locations (comma-separated)"
-                className="form-control mb-3"
-              />
-              <input
-                type="text"
-                name="dropoff_locations"
-                value={addItemData.dropoff_locations || ""}
-                onChange={handleAddItemChange}
-                placeholder="Dropoff Locations (comma-separated)"
-                className="form-control mb-3"
-              />
-            </>
-          ) : null}
-        </div>
+        <h2>Add {addItemType}</h2>
+        {addItemType === "volunteer" || addItemType === "driver" ? (
+          <>
+            <input
+              type="text"
+              name="first_name"
+              value={addItemData.first_name || ""}
+              onChange={handleAddItemChange}
+              placeholder="First Name"
+              className="form-control mb-3"
+            />
+            <input
+              type="text"
+              name="last_name"
+              value={addItemData.last_name || ""}
+              onChange={handleAddItemChange}
+              placeholder="Last Name"
+              className="form-control mb-3"
+            />
+            <input
+              type="text"
+              name="address"
+              value={addItemData.address || ""}
+              onChange={handleAddItemChange}
+              placeholder="Address"
+              className="form-control mb-3"
+            />
+            <input
+              type="text"
+              name="phone_number"
+              value={addItemData.phone_number || ""}
+              onChange={handleAddItemChange}
+              placeholder="Phone Number"
+              className="form-control mb-3"
+            />
+            <input
+              type="text"
+              name="notes"
+              value={addItemData.notes || ""}
+              onChange={handleAddItemChange}
+              placeholder="Notes"
+              className="form-control mb-3"
+            />
+          </>
+        ) : addItemType === "route" ? (
+          <>
+            <input
+              type="text"
+              name="driver_type"
+              value={addItemData.driver_type || ""}
+              onChange={handleAddItemChange}
+              placeholder="Driver Type"
+              className="form-control mb-3"
+            />
+            <input
+              type="text"
+              name="driver_id"
+              value={addItemData.driver_id || ""}
+              onChange={handleAddItemChange}
+              placeholder="Driver ID"
+              className="form-control mb-3"
+            />
+            <input
+              type="text"
+              name="pickup_locations"
+              value={addItemData.pickup_locations || ""}
+              onChange={handleAddItemChange}
+              placeholder="Pickup Locations (comma-separated)"
+              className="form-control mb-3"
+            />
+            <input
+              type="text"
+              name="dropoff_locations"
+              value={addItemData.dropoff_locations || ""}
+              onChange={handleAddItemChange}
+              placeholder="Dropoff Locations (comma-separated)"
+              className="form-control mb-3"
+            />
+          </>
+        ) : null}
         <button className="btn btn-success me-2" onClick={handleAddItem}>
           Add {addItemType}
         </button>
