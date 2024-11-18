@@ -249,7 +249,11 @@ function RouteManagement() {
               <td>{route.route_number}</td>
               <td>{route.pickup_locations.join(", ")}</td>
               <td>{route.dropoff_locations.join(", ")}</td>
-              <td>{route.driver_type}</td>
+              <td>
+                {route.driver_type === "volunteer"
+                  ? "Volunteer"
+                  : "Employed Driver"}
+              </td>
               <td>{route.driver_name}</td>
               <td>
                 <button
@@ -292,10 +296,17 @@ function RouteManagement() {
             { value: "volunteer", label: "Volunteer" },
             { value: "employed_driver", label: "Employed Driver" },
           ]}
-          value={{
-            value: editRouteData.driver_type,
-            label: editRouteData.driver_type,
-          }}
+          value={
+            editRouteData.driver_type
+              ? {
+                  value: editRouteData.driver_type,
+                  label:
+                    editRouteData.driver_type === "volunteer"
+                      ? "Volunteer"
+                      : "Employed Driver",
+                }
+              : null
+          }
           onChange={handleDriverTypeChangeEdit}
           placeholder="Select Driver Type"
           className="mb-3"
